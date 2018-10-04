@@ -5,9 +5,9 @@
 #include<unordered_map>
 
 #define PI 3.1415926535897
-std::unordered_map<jfloat , jfloat*> map;
+std::unordered_map<jdouble, jdouble*> map;
 
-inline jfloat compute_sigma(jint low_bound, jint high_bound, jfloat s, jint y, jint blur_type)
+inline jdouble compute_sigma(jint low_bound, jint high_bound, jdouble s, jint y, jint blur_type)
 {
     switch(blur_type)
     {
@@ -25,29 +25,29 @@ inline jfloat compute_sigma(jint low_bound, jint high_bound, jfloat s, jint y, j
     return s;
 }
 
-jfloat* kernel_compute(jint r ,jfloat s)
+jdouble* kernel_compute(jint r ,jdouble s)
 {
     if(map.find(s) != map.end())
     {
         return map[s];
     }
     jint k=0;
-    jfloat sum = 0.0;
+    jdouble sum = 0.0;
     jint kSize = abs(2 * r + 1);
-    jfloat * kernel_value = new jfloat((kSize));
+    jdouble * kernel_value = new jdouble((kSize));
     for(int i=0;i<kSize;i++)
     {
         k=i-r;
-        jfloat gc = pow((1.0 / (2.0 * PI * s * s)), 0.5);
-        jfloat gec = exp((-pow(k, 2)) /(2.0 * pow(s, 2)));
-        jfloat val = gc*gec;
+        jdouble gc = pow((1.0 / (2.0 * PI * s * s)), 0.5);
+        jdouble gec = exp((-pow(k, 2)) /(2.0 * pow(s, 2)));
+        jdouble val = gc*gec;
         kernel_value[i] = val;
         sum+=val;
     }
 
     //Normalisation
     for(int i=0; i<kSize; i++){
-        jfloat v = kernel_value[i]/sum;
+        jdouble v = kernel_value[i]/sum;
         kernel_value[i] = v;
     }
     map[s] = kernel_value;
@@ -56,19 +56,20 @@ jfloat* kernel_compute(jint r ,jfloat s)
 
 }
 
-jfloat* intermediate_matrix(jfloat* input, jfloat* kernel_value,jint l_bound, jint h_bound, jfloat sigma,jint width, jint h,jint radius)
+jdouble* intermediate_matrix(jdouble* input, jdouble* kernel_value,jint l_bound, jint h_bound, jdouble sigma,jint width, jint h,jint radius)
 {
         int k,kernelIndex;
         int size = width*h;
-        jfloat* int_matrix = new jfloat[size];
+        jdouble* int_matrix = new jdouble[size];
         for(int i=l_bound;i<h_bound;i++)
         {
+
         for(int j=0;j<width;j++)
         {
 
             if (sigma > 0.6)
             {
-                jfloat value = 0.0;
+                jdouble value = 0.0;
 
                 for (k = 0; k < (2 * radius) + 1; k++)
                 {
@@ -93,7 +94,7 @@ jfloat* intermediate_matrix(jfloat* input, jfloat* kernel_value,jint l_bound, ji
     return int_matrix;
 
 }
-jfloat* output_matrix(jfloat* output,jfloat* int_matrix,jfloat* kernel_value,jint l_bound,jint h_bound,jint width,jint h,jint radius)
+jdouble* output_matrix(jdouble* output,jdouble* int_matrix,jdouble* kernel_value,jint l_bound,jint h_bound,jint width,jint h,jint radius)
 {
     jint kernelIndex;
     jint size =width*h;
@@ -102,7 +103,7 @@ jfloat* output_matrix(jfloat* output,jfloat* int_matrix,jfloat* kernel_value,jin
         for(int j=0;j<width;j++)
         {
 //            output[j]= 0;
-            jfloat value = 0.0;
+            jdouble value = 0.0;
             for(jint k=0;k<(2*radius)+1;k++)
             {
                 kernelIndex = k;
@@ -127,34 +128,61 @@ jfloat* output_matrix(jfloat* output,jfloat* int_matrix,jfloat* kernel_value,jin
 
 
 
-jfloat* Gaussian_Blur(jfloat *output,jfloat *region_input,jint l_bound,jint h_bound,jint blur_type,jfloat sigma,jint w,jint h)
-{
+jdouble* Gaussian_Blur(jdouble *output,jdouble *region_input,jint l_bound,jint h_bound,jint blur_type,jdouble sigma,jint w,jint h) {
     jint radius = 10;
-    jfloat *kernel_value, *int_matrix;
-    if (blur_type == 1 )
+    jdouble *kernel_value, *int_matrix;
+    if (blur_type == 1) {
+        sigma = compute_sigma(l_bound, h_bound, sigma, 0, 1);
+        kernel_value = kernel_compute(radius, sigma);
+        int_matrix = intermediate_matrix(region_input, kernel_value, l_bound, h_bound, sigma, w, h,
+                                         radius);
+        output = output_matrix(output, int_matrix, kernel_value, l_bound, h_bound, w, h, radius);
+    }
+    if (blur_type == 2)
     {
-        sigma = compute_sigma(l_bound,h_bound,sigma,0,1);
-        kernel_value = kernel_compute(radius ,sigma);
-        int_matrix = intermediate_matrix(region_input,kernel_value,l_bound, h_bound,sigma,w,h,radius);
-        output = output_matrix(output,int_matrix,kernel_value,l_bound,h_bound,w,h,radius);
+        for(int i=l_bound; i<h_bound; i++){
+            sigma = compute_sigma(l_bound, h_bound, sigma, i, 2);
+            kernel_value = kernel_compute(radius, sigma);
+            int_matrix = intermediate_matrix(region_input, kernel_value, i, i+1, sigma, w, h,
+                                             radius);
+            output = output_matrix(output, int_matrix, kernel_value, i, i+1, w, h, radius);
+
+        }
+
+    }
+    if (blur_type == 3)
+    {
+        for(int i=l_bound; i<h_bound; i++){
+            sigma = compute_sigma(l_bound, h_bound, sigma, i, 3);
+            kernel_value = kernel_compute(radius, sigma);
+            int_matrix = intermediate_matrix(region_input, kernel_value, i, i+1, sigma, w, h,
+                                             radius);
+            output = output_matrix(output, int_matrix, kernel_value, i, i+1, w, h, radius);
+
+        }
+
     }
     return output;
 
 }
 
 
-jfloat* Build_Blur(jfloat *channel_input, jint a0, jint a1,jint a2,jint a3,jint w,jint h,jfloat sigma_far,jfloat sigma_near)
+jdouble* Build_Blur(jdouble *channel_input, jint a0, jint a1,jint a2,jint a3,jint w,jint h,jfloat sigma_far,jfloat sigma_near)
 {
     jint size = w*h;
-    jfloat *output = new jfloat[size];
+    jdouble *output = new jdouble[size];
     for (int j=0;j<size;j++)
     {
          output[j] = channel_input[j];
     }
     // First Region
-    output = Gaussian_Blur(output,channel_input,0,a0,1,(jfloat)sigma_far,w,h);
+    output = Gaussian_Blur(output,channel_input,0,a0,1,(jdouble)sigma_far,w,h);
+    // second region
+    output =  Gaussian_Blur(output,channel_input,a0,a1,2,(jdouble)sigma_far,w,h);
+    //fourth region
+    output =  Gaussian_Blur(output,channel_input,a2,a3,3,(jdouble)sigma_near,w,h);
     // fifth region
-    output =  Gaussian_Blur(output,channel_input,a3,h,1,(jfloat)sigma_far,w,h);
+    output =  Gaussian_Blur(output,channel_input,a3,h,1,(jdouble)sigma_near,w,h);
             delete []channel_input;
             return output;
 }
@@ -178,10 +206,10 @@ Java_edu_asu_ame_meteor_speedytiltshift2018_SpeedyTiltShift_tiltshiftcppnative(J
     jint size = width*height;
     jint a=0xff;
     int i;
-    jfloat *channelR, *channelG, *channelB,*output_channelR, *output_channelG, *output_channelB;
-    channelR = new jfloat[size];
-    channelG = new jfloat[size];
-    channelB = new jfloat[size];
+    jdouble *channelR, *channelG, *channelB,*output_channelR, *output_channelG, *output_channelB;
+    channelR = new jdouble[size];
+    channelG = new jdouble[size];
+    channelB = new jdouble[size];
 
 
     // create a copy of input pixels and three channels
@@ -190,9 +218,9 @@ Java_edu_asu_ame_meteor_speedytiltshift2018_SpeedyTiltShift_tiltshiftcppnative(J
         jint B = pixels[j] & 0xff;
         jint G = (pixels[j]>>8) & 0xff;
         jint R = (pixels[j]>>16)&0xff;
-        channelR[j] = (jfloat)R;
-        channelG[j] = (jfloat)G;
-        channelB[j] = (jfloat)B;
+        channelR[j] = (jdouble)R;
+        channelG[j] = (jdouble)G;
+        channelB[j] = (jdouble)B;
     }
 
     //Build Blur
