@@ -3,9 +3,10 @@
 #include<math.h>
 #include <cpu-features.h>
 #include<unordered_map>
+#include <vector>
 
 #define PI 3.1415926535897
-std::unordered_map<jdouble, jdouble*> map;
+std::unordered_map<jdouble,std::vector<jdouble>> map;
 
 inline jdouble compute_sigma(jint low_bound, jint high_bound, jdouble s, jint y, jint blur_type)
 {
@@ -25,7 +26,7 @@ inline jdouble compute_sigma(jint low_bound, jint high_bound, jdouble s, jint y,
     return s;
 }
 
-jdouble* kernel_compute(jint r ,jdouble s)
+std::vector<jdouble> kernel_compute(jint r ,jdouble s)
 {
     if(map.find(s) != map.end())
     {
@@ -34,21 +35,22 @@ jdouble* kernel_compute(jint r ,jdouble s)
     jint k=0;
     jdouble sum = 0.0;
     jint kSize = abs(2 * r + 1);
-    jdouble * kernel_value = new jdouble((kSize));
+   // jdouble * kernel_value = new jdouble((kSize));
+     std::vector<jdouble> kernel_value;
     for(int i=0;i<kSize;i++)
     {
         k=i-r;
         jdouble gc = pow((1.0 / (2.0 * PI * s * s)), 0.5);
         jdouble gec = exp((-pow(k, 2)) /(2.0 * pow(s, 2)));
         jdouble val = gc*gec;
-        kernel_value[i] = val;
+        kernel_value.push_back(val);
         sum+=val;
     }
 
     //Normalisation
     for(int i=0; i<kSize; i++){
         jdouble v = kernel_value[i]/sum;
-        kernel_value[i] = v;
+        kernel_value.push_back(v) ;
     }
     map[s] = kernel_value;
 
@@ -56,11 +58,12 @@ jdouble* kernel_compute(jint r ,jdouble s)
 
 }
 
-jdouble* intermediate_matrix(jdouble* input, jdouble* kernel_value,jint l_bound, jint h_bound, jdouble sigma,jint width, jint h,jint radius)
+std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &input, std::vector<jdouble> &kernel_value,jint l_bound, jint h_bound, jdouble sigma,jint width, jint h,jint radius)
 {
         int k,kernelIndex;
         int size = width*h;
-        jdouble* int_matrix = new jdouble[size];
+        //jdouble* int_matrix = new jdouble[size];
+        std::vector<jdouble> int_matrix;
         for(int i=l_bound;i<h_bound;i++)
         {
 
@@ -87,14 +90,14 @@ jdouble* intermediate_matrix(jdouble* input, jdouble* kernel_value,jint l_bound,
 
                 }
 
-                int_matrix[(i*width)+j] = value;
+                int_matrix.push_back(value);
             }
         }
     }
     return int_matrix;
 
 }
-jdouble* output_matrix(jdouble* output,jdouble* int_matrix,jdouble* kernel_value,jint l_bound,jint h_bound,jint width,jint h,jint radius)
+std::vector<jdouble> output_matrix(std::vector<jdouble> &output,std::vector<jdouble> &int_matrix,std::vector<jdouble> &kernel_value,jint l_bound,jint h_bound,jint width,jint h,jint radius)
 {
     jint kernelIndex;
     jint size =width*h;
@@ -108,7 +111,7 @@ jdouble* output_matrix(jdouble* output,jdouble* int_matrix,jdouble* kernel_value
             {
                 kernelIndex = k;
                 jint pixelIndex = (i - kernelIndex)*width + j;
-                if(pixelIndex >= 0 && pixelIndex<size)
+                if(pixelIndex >= 0 && pixelIndex<int_matrix.size())
                 {
                     if (kernelIndex >= 0)
                     {
@@ -117,10 +120,11 @@ jdouble* output_matrix(jdouble* output,jdouble* int_matrix,jdouble* kernel_value
                     }
                 }
             }
-            output[(i * width) + j] = value;
+            output.push_back(value);
         }
     }
-    delete []int_matrix;
+    //delete []int_matrix;
+    //int_matrix.clear();
     return output;
 }
 
@@ -128,10 +132,11 @@ jdouble* output_matrix(jdouble* output,jdouble* int_matrix,jdouble* kernel_value
 
 
 
-jdouble* Gaussian_Blur(jdouble *output,jdouble *region_input,jint l_bound,jint h_bound,jint blur_type,jdouble sigma,jint w,jint h) {
+std::vector<jdouble> Gaussian_Blur(std::vector<jdouble> &output,std::vector<jdouble> &region_input,jint l_bound,jint h_bound,jint blur_type,jdouble sigma,jint w,jint h) {
     jint radius = 10;
-    jdouble *kernel_value, *int_matrix;
+
     if (blur_type == 1) {
+        std::vector<jdouble> kernel_value, int_matrix;
         sigma = compute_sigma(l_bound, h_bound, sigma, 0, 1);
         kernel_value = kernel_compute(radius, sigma);
         int_matrix = intermediate_matrix(region_input, kernel_value, l_bound, h_bound, sigma, w, h,
@@ -140,7 +145,8 @@ jdouble* Gaussian_Blur(jdouble *output,jdouble *region_input,jint l_bound,jint h
     }
     if (blur_type == 2)
     {
-        for(int i=l_bound; i<h_bound; i++){
+        for(int i=l_bound; i<h_bound-1; i++){
+            std::vector<jdouble> kernel_value, int_matrix;
             sigma = compute_sigma(l_bound, h_bound, sigma, i, 2);
             kernel_value = kernel_compute(radius, sigma);
             int_matrix = intermediate_matrix(region_input, kernel_value, i, i+1, sigma, w, h,
@@ -152,7 +158,8 @@ jdouble* Gaussian_Blur(jdouble *output,jdouble *region_input,jint l_bound,jint h
     }
     if (blur_type == 3)
     {
-        for(int i=l_bound; i<h_bound; i++){
+        for(int i=l_bound; i<h_bound-1; i++){
+            std::vector<jdouble> kernel_value, int_matrix;
             sigma = compute_sigma(l_bound, h_bound, sigma, i, 3);
             kernel_value = kernel_compute(radius, sigma);
             int_matrix = intermediate_matrix(region_input, kernel_value, i, i+1, sigma, w, h,
@@ -167,23 +174,25 @@ jdouble* Gaussian_Blur(jdouble *output,jdouble *region_input,jint l_bound,jint h
 }
 
 
-jdouble* Build_Blur(jdouble *channel_input, jint a0, jint a1,jint a2,jint a3,jint w,jint h,jfloat sigma_far,jfloat sigma_near)
+std::vector<jdouble> Build_Blur(std::vector<jdouble>channel_input, jint a0, jint a1,jint a2,jint a3,jint w,jint h,jfloat sigma_far,jfloat sigma_near)
 {
     jint size = w*h;
-    jdouble *output = new jdouble[size];
+    std::vector<jdouble> output;
     for (int j=0;j<size;j++)
     {
-         output[j] = channel_input[j];
+         //output[j] = channel_input[j];
+        output.push_back(channel_input[j]);
     }
     // First Region
     output = Gaussian_Blur(output,channel_input,0,a0,1,(jdouble)sigma_far,w,h);
     // second region
-    output =  Gaussian_Blur(output,channel_input,a0,a1,2,(jdouble)sigma_far,w,h);
+     output =  Gaussian_Blur(output,channel_input,a0,a1,2,(jdouble)sigma_far,w,h);
     //fourth region
     output =  Gaussian_Blur(output,channel_input,a2,a3,3,(jdouble)sigma_near,w,h);
     // fifth region
     output =  Gaussian_Blur(output,channel_input,a3,h,1,(jdouble)sigma_near,w,h);
-            delete []channel_input;
+            //delete []channel_input;
+    channel_input.clear();
             return output;
 }
 
@@ -206,10 +215,16 @@ Java_edu_asu_ame_meteor_speedytiltshift2018_SpeedyTiltShift_tiltshiftcppnative(J
     jint size = width*height;
     jint a=0xff;
     int i;
-    jdouble *channelR, *channelG, *channelB,*output_channelR, *output_channelG, *output_channelB;
-    channelR = new jdouble[size];
-    channelG = new jdouble[size];
-    channelB = new jdouble[size];
+    //vector<jdouble>channelR, *channelG, *channelB,*output_channelR, *output_channelG, *output_channelB;
+    std::vector<jdouble> channelR;
+    std::vector<jdouble> channelG;
+    std::vector<jdouble> channelB;
+    std::vector<jdouble> output_channelR;
+    std::vector<jdouble> output_channelG;
+    std::vector<jdouble> output_channelB;
+    //channelR = new jdouble[size];
+    //channelG = new jdouble[size];
+    //channelB = new jdouble[size];
 
 
     // create a copy of input pixels and three channels
@@ -218,9 +233,12 @@ Java_edu_asu_ame_meteor_speedytiltshift2018_SpeedyTiltShift_tiltshiftcppnative(J
         jint B = pixels[j] & 0xff;
         jint G = (pixels[j]>>8) & 0xff;
         jint R = (pixels[j]>>16)&0xff;
-        channelR[j] = (jdouble)R;
-        channelG[j] = (jdouble)G;
-        channelB[j] = (jdouble)B;
+        channelR.push_back((jdouble)R);
+        channelG.push_back((jdouble)G);
+        channelB.push_back((jdouble)B);
+        //channelR[j] = (jdouble)R;
+        //channelG[j] = (jdouble)G;
+        //channelB[j] = (jdouble)B;
     }
 
     //Build Blur
@@ -238,13 +256,16 @@ Java_edu_asu_ame_meteor_speedytiltshift2018_SpeedyTiltShift_tiltshiftcppnative(J
         outputPixels[i] = val ;
     }
     int k=i;
-    map.clear();
-    delete []output_channelR;
-    delete []output_channelG;
-    delete []output_channelB;
+    //map.clear();
+    //delete []output_channelR;
+    //output_channelR.clear();
+    //delete []output_channelG;
+    //output_channelG.clear();
+    //delete []output_channelB;
+    //output_channelB.clear();
 
-  // env->ReleaseIntArrayElements(inputPixels_, pixels, 0);
- //   env->ReleaseIntArrayElements(outputPixels_, outputPixels, 0);
+   env->ReleaseIntArrayElements(inputPixels_, pixels, 0);
+    env->ReleaseIntArrayElements(outputPixels_, outputPixels, 0);
      return 0;
 }
 
