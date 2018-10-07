@@ -71,7 +71,7 @@ std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vec
     jdouble value;
     for(i=0;i<h;i++)
     {
-        if(i<a1&&i>a2) {
+        if(i<a1||i>a2) {
             // kernel selection
             kernel = k_value[i];
 
@@ -79,8 +79,7 @@ std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vec
             for (j = 0; j < w; j++) {
                 value = 0.0;
                 for (k = 0; k < (2 * r) + 1; k++) {
-                    kernelIndex = k;
-                    pixelIndex = (i * w) + j + kernelIndex;
+                    pixelIndex = (i * w) + j -k;
                     if (pixelIndex >= 0 && pixelIndex < size) {
                         value += (input[pixelIndex] * kernel[kernelIndex]);
 
@@ -94,13 +93,13 @@ std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vec
 return i_matrix;
 }
 
-std::vector<jdouble> output_matrix(std::vector<jdouble> &o_mat,std::vector<jdouble> i_mat,jint a0, jint a1,jint a2,jint a3, jint w, jint h, jint r)
+std::vector<jdouble> output_matrix(std::vector<jdouble> &o_mat,std::vector<jdouble> &i_mat,jint a0, jint a1,jint a2,jint a3, jint w, jint h, jint r)
 {
     jint kernelIndex,pixelIndex,e=0;
     std::vector<jdouble> kernel;
     for(int i=0;i<h;i++)
     {
-        if(i<a1&&i>a2)
+        if(i<a1||i>a2)
         {
         // kernel computation
         kernel = k_value[i];
