@@ -47,7 +47,7 @@ void kernel_compute(jint a0 , jint a1, jint a2, jint a3,jint h, jint r, jdouble 
     }
     for(i=a1;i<a2;i++)
     {
-        std::vector<jdouble> k1(3,1);
+        std::vector<jdouble> k1(21,1);
         k_value.push_back(k1);
     }
     //map of kernel values for fourth region
@@ -60,10 +60,9 @@ void kernel_compute(jint a0 , jint a1, jint a2, jint a3,jint h, jint r, jdouble 
     {
         k_value.push_back(kernel_values(sigmanear, r, i));
     }
-    int a=i;
 }
 
-std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vector<jdouble> &input, jint a0, jint a1,jint a2,jint a3, jint w, jint h, jint r)
+std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vector<jdouble> &input,jint a1,jint a2, jint w, jint h, jint r)
 {
     jint i,j,kernelIndex,pixelIndex,k,e=0;
     std::vector<jdouble> kernel;
@@ -93,9 +92,9 @@ std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vec
 return i_matrix;
 }
 
-std::vector<jdouble> output_matrix(std::vector<jdouble> &o_mat,std::vector<jdouble> &i_mat,jint a0, jint a1,jint a2,jint a3, jint w, jint h, jint r)
+std::vector<jdouble> output_matrix(std::vector<jdouble> &o_mat,std::vector<jdouble> &i_mat,jint a1,jint a2, jint w, jint h, jint r)
 {
-    jint kernelIndex,pixelIndex,e=0;
+    jint kernelIndex,pixelIndex;
     std::vector<jdouble> kernel;
     for(int i=0;i<h;i++)
     {
@@ -133,8 +132,8 @@ std::vector<jdouble> Build_Blur(std::vector<jdouble> &channel_input, jint a0, ji
 
 
     kernel_compute(a0,a1,a2, a3,h,radius,(jdouble)sigma_near,(jdouble)sigma_far);
-    int_matrix = intermediate_matrix(int_matrix,channel_input,a0,a1,a2,a3,w,h,radius);
-    output = output_matrix(output,int_matrix,a0,a1,a2,a3,w,h,radius);
+    int_matrix = intermediate_matrix(int_matrix,channel_input,a1,a2,w,h,radius);
+    output = output_matrix(output,int_matrix,a1,a2,w,h,radius);
     channel_input.clear();
     return output;
 }
