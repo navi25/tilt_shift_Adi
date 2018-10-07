@@ -2,19 +2,12 @@
 #include <string>
 #include<math.h>
 #include <cpu-features.h>
-#include<unordered_map>
 #include <vector>
-
 #define PI 3.1415926535897
-std::unordered_map<jdouble,std::vector<jdouble>> map;
+std::vector<std::vector<jdouble>> k_value;
 
-
-jint kernel_values(jdouble s, jint r,jint y)
+std::vector<jdouble> kernel_values(jdouble s, jint r,jint y)
 {
-    if(map.find(y) != map.end())
-    {
-        return 0;
-    }
     jint k=0,i;
     jdouble sum = 0.0;
     jint kSize = abs(2 * r + 1);
@@ -34,29 +27,40 @@ jint kernel_values(jdouble s, jint r,jint y)
         jdouble v = kernel_value[i]/sum;
         kernel_value[i] = v;
     }
-    map[y] = kernel_value;
-    return 1;
+    return kernel_value;
 }
 
 
-void kernel_compute(jint a0 , jint a1, jint a2, jint a3,jint w,jint h, jint r, jdouble sigmanear, jdouble sigmafar) {
-    jint i;
+void kernel_compute(jint a0 , jint a1, jint a2, jint a3,jint h, jint r, jdouble sigmanear, jdouble sigmafar) {
+    jint i,e;
     jdouble s;
+    std::vector<jdouble> k;
     //map of kernel values for first region
-     kernel_values(sigmafar, r, 0);
+    for(i=0;i<a0;i++)
+    {
+        k_value.push_back(kernel_values(sigmafar, r, 0));
+    }
     //map of kernel values for second region
     for (i = a0; i < a1; i++) {
-        s = abs(sigmafar * ((a1 - i) / (a0 - a1)));
-         kernel_values(s, r, i);
+        s = abs(sigmafar * (jdouble)(a1-i)/(a0-a1));
+        k_value.push_back(kernel_values(s, r, i));
+    }
+    for(i=a1;i<a2;i++)
+    {
+        std::vector<jdouble> k1(3,1);
+        k_value.push_back(k1);
     }
     //map of kernel values for fourth region
     for (i = a2; i < a3; i++) {
-        s = sigmanear * ((i - a2) / (a3 - a2));
-        kernel_values(s, r, i);
+        s = sigmanear * (jdouble)((i - a2) / (a3 - a2));
+        k_value.push_back(kernel_values(s, r, i));
     }
     //map of kernel values for fifth region
-     kernel_values(sigmanear, 4, a3);
-
+    for(i=a3;i<h;i++)
+    {
+        k_value.push_back(kernel_values(sigmanear, r, i));
+    }
+    int a=i;
 }
 
 std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vector<jdouble> &input, jint a0, jint a1,jint a2,jint a3, jint w, jint h, jint r)
@@ -67,37 +71,24 @@ std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vec
     jdouble value;
     for(i=0;i<h;i++)
     {
-        // kernel selection
-        if(h<a0)
-        {
-            kernel = map[e];
-        }
-        else if(h>a3)
-        {
-            kernel = map[a3];
-        }
-        else
-        {
-            kernel = map[i];
-        }
+        if(i<a1&&i>a2) {
+            // kernel selection
+            kernel = k_value[i];
 
-        // intermediate pixel computation
-        for(j=0;j<w;j++)
-        {
-            value=0.0;
-            for(k=0;k<(2*r)+1;k++)
-            {
-                kernelIndex = k;
-                pixelIndex = (i*w)+j +kernelIndex;
-                if(pixelIndex>=0 && pixelIndex<size)
-                {
+            // intermediate pixel computation
+            for (j = 0; j < w; j++) {
+                value = 0.0;
+                for (k = 0; k < (2 * r) + 1; k++) {
+                    kernelIndex = k;
+                    pixelIndex = (i * w) + j + kernelIndex;
+                    if (pixelIndex >= 0 && pixelIndex < size) {
                         value += (input[pixelIndex] * kernel[kernelIndex]);
 
+                    }
                 }
+                i_matrix[(i * w) + j] = value;
             }
-            i_matrix[(i*w)+j]=value;
         }
-
     }
 
 return i_matrix;
@@ -112,18 +103,7 @@ std::vector<jdouble> output_matrix(std::vector<jdouble> &o_mat,std::vector<jdoub
         if(i<a1&&i>a2)
         {
         // kernel computation
-        if(h<a0)
-        {
-            kernel = map[e];
-        }
-        else if(h>a3)
-        {
-            kernel = map[a3];
-        }
-        else
-        {
-            kernel = map[i];
-        }
+        kernel = k_value[i];
         // output pixel computation
             for (int j = 0; j < w; j++)
             {
@@ -153,7 +133,7 @@ std::vector<jdouble> Build_Blur(std::vector<jdouble> &channel_input, jint a0, ji
     int_matrix = channel_input;
 
 
-    kernel_compute(a0,a1,a2, a3,w, h,radius,(jdouble)sigma_near,(jdouble)sigma_far);
+    kernel_compute(a0,a1,a2, a3,h,radius,(jdouble)sigma_near,(jdouble)sigma_far);
     int_matrix = intermediate_matrix(int_matrix,channel_input,a0,a1,a2,a3,w,h,radius);
     output = output_matrix(output,int_matrix,a0,a1,a2,a3,w,h,radius);
     channel_input.clear();
