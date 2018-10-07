@@ -38,7 +38,7 @@ public class SpeedyTiltShift {
         int[] pixelsOut = new int[input.getHeight()*input.getWidth()];
         input.getPixels(pixels,0,input.getWidth(),0,0,input.getWidth(),input.getHeight());
 
-        tiltshiftcppnative(pixels,pixelsOut,input.getWidth(),input.getHeight(),sigma_far*5,sigma_near*5,a0,a1,a2,a3);
+        tiltshiftcppnative(pixels,pixelsOut,input.getWidth(),input.getHeight(),sigma_far*10,sigma_near*10,a0,a1,a2,a3);
 
         outBmp.setPixels(pixelsOut,0,input.getWidth(),0,0,input.getWidth(),input.getHeight());
         return outBmp;
