@@ -109,7 +109,7 @@ std::vector<jdouble> output_matrix(std::vector<jdouble> &o_mat,std::vector<jdoub
                 for (jint k = 0; k < (2 * r) + 1; k++)
                 {
                     kernelIndex = k;
-                    pixelIndex = (i - kernelIndex) *w + j;
+                    pixelIndex = (i - kernelIndex) * w+ j;
                     if (pixelIndex >= 0 && pixelIndex < i_mat.size())
                     {
                             value += (kernel[kernelIndex] * i_mat[pixelIndex]);
