@@ -78,11 +78,14 @@ std::vector<jdouble> intermediate_matrix(std::vector<jdouble> &i_matrix,std::vec
             for (j = 0; j < w; j++) {
                 value = 0.0;
                 for (k = 0; k < (2 * r) + 1; k++) {
-                    pixelIndex = (i * w) + j -k;
+                    int ki = k-r;
+                    pixelIndex = (i * w) + j +ki;
                     if (pixelIndex >= 0 && pixelIndex < size) {
-                        value += (input[pixelIndex] * kernel[kernelIndex]);
-
+                        value += (input[pixelIndex] * kernel[k]);
                     }
+                }
+                if(value == 0.0){
+                    value = input[(i * w) + j];
                 }
                 i_matrix[(i * w) + j] = value;
             }
@@ -108,13 +111,16 @@ std::vector<jdouble> output_matrix(std::vector<jdouble> &o_mat,std::vector<jdoub
                 jdouble value = 0.0;
                 for (jint k = 0; k < (2 * r) + 1; k++)
                 {
-                    kernelIndex = k;
-                    pixelIndex = (i - kernelIndex) * w+ j;
+                    kernelIndex = k-r;
+                    pixelIndex = (i + kernelIndex) * w+ j;
                     if (pixelIndex >= 0 && pixelIndex < i_mat.size())
                     {
-                            value += (kernel[kernelIndex] * i_mat[pixelIndex]);
+                            value += (kernel[k] * i_mat[pixelIndex]);
 
                     }
+                }
+                if(value == 0.0){
+                    value = i_mat[(i * w) + j];
                 }
                 o_mat[(i * w) + j] = value;
             }
